@@ -38,7 +38,7 @@ LINHAS_LIMPAS = 0
 # Cada quadrado tem 40x40pxs (GRID 10x20)
 BASE_JANELA = 800
 ALTURA_JANELA = 800
-
+linhas = 1
 
 POSICAO_INICIAL = (19, 4)
 POSICAO = POSICAO_INICIAL
@@ -278,11 +278,11 @@ vao_linha_h = ctx.vertex_array(
 # ------------------------------------------------------------- estado e controles
 
 desce, direita ,esquerda,sentido_jogador_x,antes =  0, 0, 0, 0, 0
-
+dropped = False
 
 
 def tecla(window, key, scancode, action, mods):
-    global  desce, direita, esquerda, sentido_jogador_x, antes,POSICAO, MATRIZ_PECA
+    global  desce, direita, esquerda, sentido_jogador_x, antes,POSICAO, MATRIZ_PECA, Sacola, COR_ATUAL,dropped
     if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
         glfw.set_window_should_close(window, True)
 
@@ -302,21 +302,24 @@ def tecla(window, key, scancode, action, mods):
         linha, coluna = POSICAO
         if(pode_descer(MATRIZ_PECA,POSICAO)):
             POSICAO = (linha-1, coluna)
-    elif glfw.get_key(janela,glfw.KEY_UP) == glfw.PRESS:
+    elif key == glfw.KEY_UP and action == glfw.PRESS:
         Matriz_temp = np.rot90(MATRIZ_PECA, k=-1)
         if(pos_valida(Matriz_temp, POSICAO)):
             MATRIZ_PECA = Matriz_temp
-    elif glfw.get_key(janela,glfw.KEY_Z) == glfw.PRESS:
+    elif key == glfw.KEY_Z and action == glfw.PRESS:
         Matriz_temp = np.rot90(MATRIZ_PECA)
         if(pos_valida(Matriz_temp, POSICAO)):
             MATRIZ_PECA = Matriz_temp
-    elif glfw.get_key(janela,glfw.KEY_X) == glfw.PRESS:
+    elif key == glfw.KEY_X and action == glfw.PRESS:
         Matriz_temp = np.rot90(MATRIZ_PECA, k = 2)
         if(pos_valida(Matriz_temp, POSICAO)):
             MATRIZ_PECA = Matriz_temp
 
-    elif glfw.get_key(janela, glfw.KEY_SPACE) == glfw.PRESS:
-        return
+    elif key == glfw.KEY_SPACE and action == glfw.PRESS  :
+        while(pode_descer(MATRIZ_PECA,POSICAO)):
+            POSICAO = (POSICAO[0]-1, POSICAO[1])
+        dropped = True
+
 
 
 
@@ -371,7 +374,7 @@ while not glfw.window_should_close(janela):
 
 
     quadros += 1
-    if agora - marco >= 0.8:
+    if agora - marco >= 0.8 or dropped:
         if(pode_descer(MATRIZ_PECA, POSICAO)):
             linha, coluna = POSICAO
             POSICAO = (linha - 1, coluna)
@@ -393,12 +396,21 @@ while not glfw.window_should_close(janela):
             POSICAO = POSICAO_INICIAL
 
         glfw.set_window_title(
-            janela, f"Acerte o alvo - {LINHAS_LIMPAS} acertos - "
+            janela, f"Limpe  {linhas-LINHAS_LIMPAS} linha(s)- "
                     f"{quadros / (agora - marco):5.1f} fps")
-        if(LINHAS_LIMPAS >= 20):
-            FUNDO = CORES_PECAS['S']
+        if(LINHAS_LIMPAS >= linhas):
+            MATRIZ = np.zeros((20,10))
+            for l in range(11): #11 Para aparecer na esquerda também
+                desenhar(vao_linha_v, 2.0, (-0.5 + (l * 0.1), 0.0), moderngl.LINES)    # atravessa a tela toda no meio
+            for l in range(21): #11 Para aparecer na esquerda também
+                desenhar(vao_linha_h, 1, (0.0, -1 + (l * 0.1)), moderngl.LINES)    # atravessa a tela toda no meio
+
+            ctx.clear(*FUNDO)
+            LINHAS_LIMPAS = 0
+
         quadros = 0
         marco = agora
+        dropped = False
 
 for recurso in (vao_cheio, vao_borda, ebo_cheio, ebo_borda, vbo, prog):
     recurso.release()
