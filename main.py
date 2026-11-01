@@ -240,6 +240,28 @@ LINHA_V = np.array([
 LINHA_H = np.array([
     -0.5, 0.0, 0.0, 1.0,   1.0, 1.0, 1.0, 1.0,   # ponto da esquerda
      0.5, 0.0, 0.0, 1.0,   1.0, 1.0, 1.0, 1.0,   # ponto da direita
+PECA_O = np.array([
+    -0.5, -0.5, 0.0, 1.0, 0.89, 0.62, 0.01, 1.0,
+     0.5, -0.5, 0.0, 1.0, 0.89, 0.62, 0.01, 1.0,
+     0.5,  0.5, 0.0, 1.0, 0.89, 0.62, 0.01, 1.0,
+    -0.5,  0.5, 0.0, 1.0, 0.89, 0.62, 0.01, 1.0
+], dtype='f4')
+
+CINZA = (0.5, 0.5, 0.5)
+
+QUADRADO_CINZA = np.array([
+    v for (x, y) in CANTOS
+    for v in (x, y, 0.0, 1.0) + CINZA + (1.0,)
+], dtype='f4')
+
+LINHA_V = np.array([
+    0.0, -0.5, 0.0, 1.0,   1.0, 1.0, 1.0, 1.0,   # ponto de baixo
+    0.0,  0.5, 0.0, 1.0,   1.0, 1.0, 1.0, 1.0,   # ponto de cima
+], dtype='f4')
+
+LINHA_H = np.array([
+    -0.5, 0.0, 0.0, 1.0,   1.0, 1.0, 1.0, 1.0,   # ponto da esquerda
+     0.5, 0.0, 0.0, 1.0,   1.0, 1.0, 1.0, 1.0,   # ponto da direita
 ], dtype='f4')
 
 # Os MESMOS quatro vertices, lidos de duas maneiras. Como no exemplo da
@@ -249,8 +271,22 @@ CONTORNO = np.array([0, 1, 2, 3], dtype='u4')          # o ciclo dos cantos
 
 vbo = ctx.buffer(PECA_O.tobytes())
 vbo_cinza = ctx.buffer(QUADRADO_CINZA.tobytes())
+vbo = ctx.buffer(PECA_O.tobytes())
+vbo_cinza = ctx.buffer(QUADRADO_CINZA.tobytes())
 ebo_cheio = ctx.buffer(TRIANGULOS.tobytes())
 ebo_borda = ctx.buffer(CONTORNO.tobytes())
+
+def cria_vao_quadrado(cor):
+    dados = np.array([
+        v for (x, y) in CANTOS
+        for v in (x, y, 0.0, 1.0) + cor
+    ], dtype='f4')
+    vbo_cor = ctx.buffer(dados.tobytes())
+    return ctx.vertex_array(
+        prog, [(vbo_cor, '4f 4f', 'vPosition', 'vColors')], index_buffer=ebo_cheio)
+
+# Um quadrado 1x1 colorido para cada peça
+VAOS_PECAS = {nome: cria_vao_quadrado(cor) for nome, cor in CORES_PECAS.items()}
 
 def cria_vao_quadrado(cor):
     dados = np.array([
@@ -269,8 +305,14 @@ vao_cheio = ctx.vertex_array(
     prog, [(vbo, '4f 4f', 'vPosition', 'vColors')], index_buffer=ebo_cheio)
 vao_cheio_cinza = ctx.vertex_array(
     prog, [(vbo_cinza, '4f 4f', 'vPosition', 'vColors')], index_buffer=ebo_cheio)
+vao_cheio_cinza = ctx.vertex_array(
+    prog, [(vbo_cinza, '4f 4f', 'vPosition', 'vColors')], index_buffer=ebo_cheio)
 vao_borda = ctx.vertex_array(
     prog, [(vbo, '4f 4f', 'vPosition', 'vColors')], index_buffer=ebo_borda)
+vao_linha_v = ctx.vertex_array(
+    prog, [(ctx.buffer(LINHA_V.tobytes()), '4f 4f', 'vPosition', 'vColors')])
+vao_linha_h = ctx.vertex_array(
+    prog, [(ctx.buffer(LINHA_H.tobytes()), '4f 4f', 'vPosition', 'vColors')])
 vao_linha_v = ctx.vertex_array(
     prog, [(ctx.buffer(LINHA_V.tobytes()), '4f 4f', 'vPosition', 'vColors')])
 vao_linha_h = ctx.vertex_array(
@@ -339,6 +381,15 @@ def desenhar_peca(nome, matriz_peca, posicao):
                 x = -0.45 + (coluna_base + c) * 0.1
                 y = -0.95 + (linha_base - r) * 0.1
                 desenhar(vao, 0.1, (x, y))
+def desenhar_peca(nome, matriz_peca, posicao):
+    linha_base, coluna_base = posicao
+    vao = VAOS_PECAS[nome]
+    for r, linha in enumerate(matriz_peca):
+        for c, celula in enumerate(linha):
+            if celula == 1:
+                x = -0.45 + (coluna_base + c) * 0.1
+                y = -0.95 + (linha_base - r) * 0.1
+                desenhar(vao, 0.1, (x, y))
 
 # ------------------------------------------------------------------ laco principal
 
@@ -394,6 +445,7 @@ while not glfw.window_should_close(janela):
 
         glfw.set_window_title(
             janela, f"Acerte o alvo - {LINHAS_LIMPAS} acertos - "
+            janela, f"Acerte o alvo - {LINHAS_LIMPAS} acertos - "
                     f"{quadros / (agora - marco):5.1f} fps")
         if(LINHAS_LIMPAS >= 20):
             FUNDO = CORES_PECAS['S']
@@ -403,4 +455,5 @@ while not glfw.window_should_close(janela):
 for recurso in (vao_cheio, vao_borda, ebo_cheio, ebo_borda, vbo, prog):
     recurso.release()
 glfw.terminate()
+print(f"Execucao finalizada. Acertos: {LINHAS_LIMPAS}")
 print(f"Execucao finalizada. Acertos: {LINHAS_LIMPAS}")
