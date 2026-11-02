@@ -312,48 +312,54 @@ vao_linha_h = ctx.vertex_array(
 # ------------------------------------------------------------- estado e controles
 
 desce, direita ,esquerda,sentido_jogador_x,antes =  0, 0, 0, 0, 0
-dropped = False
+dropped ,pause = False, False
 
 
 def tecla(window, key, scancode, action, mods):
-    global  desce, direita, esquerda, sentido_jogador_x, antes,POSICAO, MATRIZ_PECA, Sacola, COR_ATUAL,dropped
+    global  desce, direita, esquerda, sentido_jogador_x, antes,POSICAO, MATRIZ_PECA, Sacola, COR_ATUAL,dropped, pause
     if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
         glfw.set_window_should_close(window, True)
     if ESTADO != "jogando":
         return
-    if key == glfw.KEY_LEFT or key == glfw.KEY_RIGHT:
-        direita = glfw.get_key(janela, glfw.KEY_RIGHT) == glfw.PRESS
-        esquerda  = glfw.get_key(janela, glfw.KEY_LEFT) == glfw.PRESS
-        sentido_jogador_x = float(direita) - float(esquerda)
-        linha, coluna = POSICAO
-        coluna = coluna + int(sentido_jogador_x)
-    
+    if key == glfw.KEY_P and action == glfw.PRESS:
+        pause = not pause
+    if key == glfw.KEY_R and action == glfw.PRESS:
+        pause = False
+        reiniciar()
+
+    if not pause:
+        if key == glfw.KEY_LEFT or key == glfw.KEY_RIGHT:
+            direita = glfw.get_key(janela, glfw.KEY_RIGHT) == glfw.PRESS
+            esquerda  = glfw.get_key(janela, glfw.KEY_LEFT) == glfw.PRESS
+            sentido_jogador_x = float(direita) - float(esquerda)
+            linha, coluna = POSICAO
+            coluna = coluna + int(sentido_jogador_x)
         
-
-        if(pode_ir_de_ladinho(MATRIZ_PECA,POSICAO, sentido_jogador_x)):  
-            POSICAO = (linha, coluna)
             
-    elif key == glfw.KEY_DOWN:
-        linha, coluna = POSICAO
-        if(pode_descer(MATRIZ_PECA,POSICAO)):
-            POSICAO = (linha-1, coluna)
-    elif key == glfw.KEY_UP and action == glfw.PRESS:
-        Matriz_temp = np.rot90(MATRIZ_PECA, k=-1)
-        if(pos_valida(Matriz_temp, POSICAO)):
-            MATRIZ_PECA = Matriz_temp
-    elif key == glfw.KEY_Z and action == glfw.PRESS:
-        Matriz_temp = np.rot90(MATRIZ_PECA)
-        if(pos_valida(Matriz_temp, POSICAO)):
-            MATRIZ_PECA = Matriz_temp
-    elif key == glfw.KEY_X and action == glfw.PRESS:
-        Matriz_temp = np.rot90(MATRIZ_PECA, k = 2)
-        if(pos_valida(Matriz_temp, POSICAO)):
-            MATRIZ_PECA = Matriz_temp
 
-    elif key == glfw.KEY_SPACE and action == glfw.PRESS  :
-        while(pode_descer(MATRIZ_PECA,POSICAO)):
-            POSICAO = (POSICAO[0]-1, POSICAO[1])
-        dropped = True
+            if(pode_ir_de_ladinho(MATRIZ_PECA,POSICAO, sentido_jogador_x)):  
+                POSICAO = (linha, coluna)
+        elif key == glfw.KEY_DOWN:
+            linha, coluna = POSICAO
+            if(pode_descer(MATRIZ_PECA,POSICAO)):
+                POSICAO = (linha-1, coluna)
+        elif key == glfw.KEY_UP and action == glfw.PRESS:
+            Matriz_temp = np.rot90(MATRIZ_PECA, k=-1)
+            if(pos_valida(Matriz_temp, POSICAO)):
+                MATRIZ_PECA = Matriz_temp
+        elif key == glfw.KEY_Z and action == glfw.PRESS:
+            Matriz_temp = np.rot90(MATRIZ_PECA)
+            if(pos_valida(Matriz_temp, POSICAO)):
+                MATRIZ_PECA = Matriz_temp
+        elif key == glfw.KEY_X and action == glfw.PRESS:
+            Matriz_temp = np.rot90(MATRIZ_PECA, k = 2)
+            if(pos_valida(Matriz_temp, POSICAO)):
+                MATRIZ_PECA = Matriz_temp
+
+        elif key == glfw.KEY_SPACE and action == glfw.PRESS  :
+            while(pode_descer(MATRIZ_PECA,POSICAO)):
+                POSICAO = (POSICAO[0]-1, POSICAO[1])
+            dropped = True
 
 
 
@@ -421,7 +427,7 @@ while not glfw.window_should_close(janela):
         continue   # sem gravidade enquanto pisca
 
     quadros += 1
-    if agora - marco >= 0.8 or dropped:
+    if (agora - marco >= 0.8 or dropped) and not pause:
         if pode_descer(MATRIZ_PECA, POSICAO):
             POSICAO = (POSICAO[0] - 1, POSICAO[1])
         else:
@@ -445,6 +451,11 @@ while not glfw.window_should_close(janela):
         quadros = 0
         marco = agora
         dropped = False
+    elif pause:
+        POSICAO = POSICAO
+
+
+
 
 for recurso in (vao_cheio, vao_borda, ebo_cheio, ebo_borda, vbo, prog):
     recurso.release()
