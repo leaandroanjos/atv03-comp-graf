@@ -31,7 +31,7 @@ SHADERS = Path(__file__).parent / "shaders"
 
 #Matriz para controlar o estado do jogo
 MATRIZ = np.zeros((20,10))
-
+VSYNC = 1
 # Controle de linhas limpas
 LINHAS_LIMPAS = 0
 
@@ -230,7 +230,7 @@ if not janela:
     sys.exit("FALHA: nao foi possivel criar a janela")
 
 glfw.make_context_current(janela)
-glfw.swap_interval(3)  
+glfw.swap_interval(VSYNC)  
 ctx = moderngl.create_context()
 
 prog = ctx.program(
@@ -316,11 +316,14 @@ dropped ,pause = False, False
 
 
 def tecla(window, key, scancode, action, mods):
-    global  desce, direita, esquerda, sentido_jogador_x, antes,POSICAO, MATRIZ_PECA, Sacola, COR_ATUAL,dropped, pause, FUNDO
+    global  desce, direita, esquerda, sentido_jogador_x, antes,POSICAO, MATRIZ_PECA, Sacola, COR_ATUAL,dropped, pause, FUNDO, VSYNC
     if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
         glfw.set_window_should_close(window, True)
     if ESTADO != "jogando":
         return
+    if key == glfw.KEY_V and action == glfw.PRESS:
+        VSYNC = 0 if VSYNC == 1 else 1
+        glfw.swap_interval(VSYNC)
     if key == glfw.KEY_P and action == glfw.PRESS:
         pause = not pause
         if pause:
@@ -453,7 +456,7 @@ while not glfw.window_should_close(janela):
 
         glfw.set_window_title(
             janela, f"Limpe {linhas - LINHAS_LIMPAS} linha(s) - "
-                    f"{quadros / max(agora - marco, 1e-6):5.1f} fps")
+                    f"{quadros / max(agora - marco, 1e-6):5.1f} fps, VSYNC: {VSYNC}")
         quadros = 0
         marco = agora
         dropped = False
