@@ -316,15 +316,21 @@ dropped ,pause = False, False
 
 
 def tecla(window, key, scancode, action, mods):
-    global  desce, direita, esquerda, sentido_jogador_x, antes,POSICAO, MATRIZ_PECA, Sacola, COR_ATUAL,dropped, pause
+    global  desce, direita, esquerda, sentido_jogador_x, antes,POSICAO, MATRIZ_PECA, Sacola, COR_ATUAL,dropped, pause, FUNDO
     if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
         glfw.set_window_should_close(window, True)
     if ESTADO != "jogando":
         return
     if key == glfw.KEY_P and action == glfw.PRESS:
         pause = not pause
+        if pause:
+            FUNDO = CORES_PECAS['O']
+        else:
+            FUNDO = (0.0,0.0,0.0,1.0)
+
     if key == glfw.KEY_R and action == glfw.PRESS:
         pause = False
+        FUNDO = (0.0,0.0,0.0,1.0)
         reiniciar()
 
     if not pause:
