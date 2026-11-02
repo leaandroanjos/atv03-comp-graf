@@ -38,7 +38,7 @@ LINHAS_LIMPAS = 0
 # Cada quadrado tem 40x40pxs (GRID 10x20)
 BASE_JANELA = 800
 ALTURA_JANELA = 800
-linhas = 1
+linhas = 10
 
 POSICAO_INICIAL = (19, 4)
 POSICAO = POSICAO_INICIAL
@@ -124,6 +124,31 @@ def verifica_matriz(matriz_peca, posicao):
             for k in range(i, 19):  # desce o que está acima
                 MATRIZ[k] = MATRIZ[k + 1]
             MATRIZ[19] = np.zeros(10)
+
+def nova_sacola():
+    s = ['O', 'T', 'I', 'Z', 'S', 'J', 'L']
+    random.shuffle(s)
+    return s
+
+def iniciar_fim(cor):
+    global ESTADO, COR_FIM, INICIO_FIM
+    ESTADO = "fim"
+    COR_FIM = cor
+    INICIO_FIM = glfw.get_time()
+
+def reiniciar():
+    global MATRIZ, LINHAS_LIMPAS, Sacola, peca_atual, MATRIZ_PECA, POSICAO
+    global dropped, ESTADO, marco, quadros
+    MATRIZ = np.zeros((20, 10))
+    LINHAS_LIMPAS = 0
+    Sacola = nova_sacola()
+    peca_atual = Sacola.pop(0)
+    MATRIZ_PECA = PECAS[peca_atual]
+    POSICAO = POSICAO_INICIAL
+    dropped = False
+    ESTADO = "jogando"
+    marco = glfw.get_time()
+    quadros = 0
 
 def pode_descer(matriz_peca, posicao):
     linha_base, coluna_base = posicao
@@ -247,6 +272,15 @@ LINHA_H = np.array([
 TRIANGULOS = np.array([0, 1, 2, 2, 3, 0], dtype='u4')  # dois triangulos
 CONTORNO = np.array([0, 1, 2, 3], dtype='u4')          # o ciclo dos cantos
 
+VERDE    = (0.0, 0.6, 0.0, 1.0)
+VERMELHO = (0.7, 0.0, 0.0, 1.0)
+DURACAO_FIM = 2.0      # segundos piscando
+PERIODO_PISCA = 0.2    # troca de cor a cada 0.2 s
+
+ESTADO = "jogando"     # "jogando" ou "fim"
+COR_FIM = VERDE
+INICIO_FIM = 0.0
+
 vbo = ctx.buffer(PECA_O.tobytes())
 vbo_cinza = ctx.buffer(QUADRADO_CINZA.tobytes())
 ebo_cheio = ctx.buffer(TRIANGULOS.tobytes())
@@ -285,8 +319,9 @@ def tecla(window, key, scancode, action, mods):
     global  desce, direita, esquerda, sentido_jogador_x, antes,POSICAO, MATRIZ_PECA, Sacola, COR_ATUAL,dropped
     if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
         glfw.set_window_should_close(window, True)
-
-    elif key == glfw.KEY_LEFT or key == glfw.KEY_RIGHT:
+    if ESTADO != "jogando":
+        return
+    if key == glfw.KEY_LEFT or key == glfw.KEY_RIGHT:
         direita = glfw.get_key(janela, glfw.KEY_RIGHT) == glfw.PRESS
         esquerda  = glfw.get_key(janela, glfw.KEY_LEFT) == glfw.PRESS
         sentido_jogador_x = float(direita) - float(esquerda)
@@ -352,9 +387,19 @@ peca_atual = cor_i
 while not glfw.window_should_close(janela):
     agora = glfw.get_time()
 
+    if ESTADO == "fim":
+        decorrido = agora - INICIO_FIM
+        if decorrido >= DURACAO_FIM:
+            reiniciar()
+            fundo = FUNDO
+        else:
+            aceso = int(decorrido / PERIODO_PISCA) % 2 == 0
+            fundo = COR_FIM if aceso else FUNDO
+    else:
+        fundo = FUNDO
 
     # --- desenho ---
-    ctx.clear(*FUNDO)
+    ctx.clear(*fundo)
     
     for l in range(11): #11 Para aparecer na esquerda também
         desenhar(vao_linha_v, 2.0, (-0.5 + (l * 0.1), 0.0), moderngl.LINES)    # atravessa a tela toda no meio
@@ -372,42 +417,31 @@ while not glfw.window_should_close(janela):
     glfw.swap_buffers(janela)
     glfw.poll_events()
 
+    if ESTADO != "jogando":
+        continue   # sem gravidade enquanto pisca
 
     quadros += 1
     if agora - marco >= 0.8 or dropped:
-        if(pode_descer(MATRIZ_PECA, POSICAO)):
-            linha, coluna = POSICAO
-            POSICAO = (linha - 1, coluna)
+        if pode_descer(MATRIZ_PECA, POSICAO):
+            POSICAO = (POSICAO[0] - 1, POSICAO[1])
         else:
-            linha_base, coluna_base = POSICAO
-            tamanho = len(MATRIZ_PECA)
-            for r in range(tamanho):
-                    for c in range(tamanho):
-                        if MATRIZ_PECA[r][c] == 1:
-                            MATRIZ[linha_base - r][coluna_base + c] = 1
-            verifica_matriz(MATRIZ_PECA, POSICAO) # ve se completou a linha
-            if(not Sacola):
-                Sacola = ['O', 'T' , 'I', 'Z', 'S', 'J', 'L']
-                random.shuffle(Sacola)
-             
-            peca_atual = Sacola.pop(0)
-            COR_ATUAL = CORES_PECAS[peca_atual]
-            MATRIZ_PECA = PECAS[peca_atual]
-            POSICAO = POSICAO_INICIAL
+            # só entra aqui quando a peça encostou
+            verifica_matriz(MATRIZ_PECA, POSICAO)   # fixa a peça e limpa linhas
+
+            if LINHAS_LIMPAS >= linhas:              # ganhou
+                iniciar_fim(VERDE)
+            else:
+                if not Sacola:
+                    Sacola = nova_sacola()
+                peca_atual = Sacola.pop(0)
+                MATRIZ_PECA = PECAS[peca_atual]
+                POSICAO = POSICAO_INICIAL
+                if not pos_valida(MATRIZ_PECA, POSICAO):   # perdeu
+                    iniciar_fim(VERMELHO)
 
         glfw.set_window_title(
-            janela, f"Limpe  {linhas-LINHAS_LIMPAS} linha(s)- "
-                    f"{quadros / (agora - marco):5.1f} fps")
-        if(LINHAS_LIMPAS >= linhas):
-            MATRIZ = np.zeros((20,10))
-            for l in range(11): #11 Para aparecer na esquerda também
-                desenhar(vao_linha_v, 2.0, (-0.5 + (l * 0.1), 0.0), moderngl.LINES)    # atravessa a tela toda no meio
-            for l in range(21): #11 Para aparecer na esquerda também
-                desenhar(vao_linha_h, 1, (0.0, -1 + (l * 0.1)), moderngl.LINES)    # atravessa a tela toda no meio
-
-            ctx.clear(*FUNDO)
-            LINHAS_LIMPAS = 0
-
+            janela, f"Limpe {linhas - LINHAS_LIMPAS} linha(s) - "
+                    f"{quadros / max(agora - marco, 1e-6):5.1f} fps")
         quadros = 0
         marco = agora
         dropped = False
