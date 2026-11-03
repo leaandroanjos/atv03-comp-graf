@@ -40,6 +40,9 @@ BASE_JANELA = 800
 ALTURA_JANELA = 800
 linhas = 10
 
+desce, direita ,esquerda,sentido_jogador_x =  0, 0, 0, 0
+dropped ,pause = False, False
+
 POSICAO_INICIAL = (19, 4)
 POSICAO = POSICAO_INICIAL
 
@@ -173,7 +176,7 @@ def pode_ir_de_ladinho(matriz_peca, posicao,sentido_jogador):
             if matriz_peca[r][c] == 1:
                 linha = linha_base - r
                 coluna = coluna_base + c
-                if((coluna+1 > 9 and sentido_jogador_x >0) or (coluna-1 < 0 and sentido_jogador_x < 0)):
+                if((coluna+1 > 9 and sentido_jogador >0) or (coluna-1 < 0 and sentido_jogador < 0)):
                     return False
                 if (sentido_jogador >0 and MATRIZ[linha][coluna+1] ==1):
                     return False
@@ -182,6 +185,7 @@ def pode_ir_de_ladinho(matriz_peca, posicao,sentido_jogador):
 
 
     return True
+
 def pos_valida(matriz_peca, posicao):
     linha_base, coluna_base = posicao
     tamanho = len(matriz_peca)
@@ -195,8 +199,6 @@ def pos_valida(matriz_peca, posicao):
 
 
 def posicao_para_tela(posicao):
-    """Converte (linha, coluna) da célula de cima à esquerda da peça
-    para o centro do bloco 2x2 na tela."""
     linha, coluna = posicao
     x = -0.45 + coluna * 0.1   # centro da célula
     y = -0.95 + linha * 0.1
@@ -217,11 +219,8 @@ glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
 glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 0)
 glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
-# Sem a dica acima, o macOS recusa qualquer contexto 3.2+ e
-# create_window devolve None. E inofensiva no Windows e no Linux.
+
 glfw.window_hint(glfw.SAMPLES, 4)
-# Sem esta linha, redimensionar a janela deforma a cena: o viewport continua
-# com o tamanho antigo, e o NDC deixa de ser quadrado na tela.
 glfw.window_hint(glfw.RESIZABLE, False)
 
 janela = glfw.create_window(BASE_JANELA,  ALTURA_JANELA, "Tetris", None, None)
@@ -311,12 +310,11 @@ vao_linha_h = ctx.vertex_array(
     prog, [(ctx.buffer(LINHA_H.tobytes()), '4f 4f', 'vPosition', 'vColors')])
 # ------------------------------------------------------------- estado e controles
 
-desce, direita ,esquerda,sentido_jogador_x,antes =  0, 0, 0, 0, 0
-dropped ,pause = False, False
+
 
 
 def tecla(window, key, scancode, action, mods):
-    global  desce, direita, esquerda, sentido_jogador_x, antes,POSICAO, MATRIZ_PECA, Sacola, COR_ATUAL,dropped, pause, FUNDO, VSYNC
+    global  desce, direita, esquerda, sentido_jogador_x, POSICAO, MATRIZ_PECA, Sacola, COR_ATUAL,dropped, pause, FUNDO, VSYNC
     if key == glfw.KEY_ESCAPE and action == glfw.PRESS:
         glfw.set_window_should_close(window, True)
     if ESTADO != "jogando":
